@@ -121,58 +121,11 @@
           </button>
         </div>
 
-        <!-- Study Console Tab Switcher -->
-        <div class="tabs-nav">
-          <button class="tab-btn active" data-tab="summary">סיכום שיעור</button>
-          <button class="tab-btn" data-tab="simulator">סימולטור אינטראקטיבי</button>
-          <button class="tab-btn" data-tab="formulas">דף נוסחאות</button>
-          <button class="tab-btn" data-tab="quiz">בחן את עצמך</button>
-        </div>
-
-        <!-- Tab Content Card -->
+        <!-- Study Content Flow (Unified reading & interactive exercises) -->
         <div class="tab-content">
-          
-          <!-- TAB 1: Summary -->
-          <div class="tab-pane active" id="tab-summary">
-            <div class="summary-text" id="summaryTextContainer">
-              <!-- Summary text injected here -->
-            </div>
+          <div class="study-content-flow" id="studyContentFlow">
+            <!-- Text, equations, simulations, and quiz questions will be dynamically rendered inline here -->
           </div>
-
-          <!-- TAB 2: Simulator -->
-          <div class="tab-pane" id="tab-simulator">
-            <div class="simulator-layout">
-              
-              <!-- Left: Controls Panel -->
-              <div class="simulator-controls" id="simulatorControls">
-                <!-- Controls will be dynamically rendered depending on simulator type -->
-              </div>
-
-              <!-- Right: Visualizer Display -->
-              <div class="simulator-display">
-                <div class="simulator-canvas-wrapper">
-                  <canvas class="simulator-canvas" id="pdeCanvas"></canvas>
-                  <div class="canvas-hint" id="canvasHint">לחץ וגרור כדי להשפיע על המערכת</div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- TAB 3: Formulas -->
-          <div class="tab-pane" id="tab-formulas">
-            <div class="equations-list" id="formulasListContainer">
-              <!-- Formulas list injected here -->
-            </div>
-          </div>
-
-          <!-- TAB 4: Quiz -->
-          <div class="tab-pane" id="tab-quiz">
-            <div class="quiz-container" id="quizContainer">
-              <!-- Quiz dynamic content -->
-            </div>
-          </div>
-
         </div>
       </div>
 
@@ -194,9 +147,9 @@
   </div>
 
   <!-- Loading JS files -->
-  <script src="data.js"></script>
-  <script src="simulations.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=1.0.1"></script>
+  <script src="simulations.js?v=1.0.1"></script>
+  <script src="app.js?v=1.0.1"></script>
 
 </body>
 </html>

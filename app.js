@@ -1,13 +1,13 @@
 /**
  * PDE TechnionPrep - Main Application Controller
- * Handles theme toggles, navigation state, localStorage progress tracking, quiz logic, and canvas loading.
+ * Handles theme toggles, navigation state, localStorage progress tracking, 
+ * and inline rendering of study materials, equations, simulators, and quizzes in a continuous flow.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   // State variables
   let completedSubchapters = JSON.parse(localStorage.getItem('pde_completed_topics')) || [];
   let currentActiveSubchapter = null;
-  let activeTab = 'summary';
   const totalSubchaptersCount = pdeCourseData.reduce((acc, ch) => acc + ch.subchapters.length, 0);
 
   // DOM Elements
@@ -30,13 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const markCompletedBtn = document.getElementById('markCompletedBtn');
   const markCompletedIcon = document.getElementById('markCompletedIcon');
   
-  // Tab Elements
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const tabPanes = document.querySelectorAll('.tab-pane');
-  const summaryTextContainer = document.getElementById('summaryTextContainer');
-  const formulasListContainer = document.getElementById('formulasListContainer');
-  const quizContainer = document.getElementById('quizContainer');
-  const simulatorControls = document.getElementById('simulatorControls');
+  // Content flow pane
+  const studyContentFlow = document.getElementById('studyContentFlow');
   
   // Theme Toggle Elements
   const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -126,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     progressSubText.textContent = `${completedCount} מתוך ${totalSubchaptersCount} נושאים הושלמו`;
 
     // SVG Circular Progress calculation
-    // Circumference = 2 * PI * r = 2 * 3.14159 * 24 = 150.796
     const circumference = 150.796;
     const offset = circumference - (pct / 100) * circumference;
     progressBarRing.style.strokeDashoffset = offset;
@@ -174,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ----------------------------------------------------
-  // 4. RENDERING VIEWS
+  // 4. RENDERING SYLLABUS VIEWS
   // ----------------------------------------------------
 
   // Sidebar Syllabus List
@@ -242,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.className = 'chapter-card';
       card.innerHTML = `
         <h3>${chapter.title}</h3>
-        <p>${chapter.description}</p>
+        <p>${chapter.description || 'סילבוס הלימודים המלא ונושאי התרגול.'}</p>
         <span style="font-size:0.8rem; color:var(--color-secondary); font-weight:600; margin-top:12px; display:inline-block;">${chapter.subchapters.length} נושאי לימוד <i class="fas fa-arrow-left" style="font-size:0.75rem; margin-right:4px;"></i></span>
       `;
       card.addEventListener('click', () => {
@@ -303,376 +297,45 @@ document.addEventListener('DOMContentLoaded', () => {
     consoleTopicTitle.textContent = `${foundSub.id} ${foundSub.title}`;
     consoleChapterSubtitle.textContent = foundChapter.title;
 
-    // Load active tab content
-    loadTabContent();
+    // Load active topic continuous content
+    loadSubchapterFlow();
     updateMainConsoleCompletedButton(subchapterId);
     
     // Scroll workspace back to top
     document.getElementById('mainWorkspace').scrollTop = 0;
   }
 
-  function loadTabContent() {
+  function loadSubchapterFlow() {
     if (!currentActiveSubchapter) return;
     
-    // Clear simulator state when moving tabs or topics
+    // Clear simulator state before rendering new page
     simulatorManager.stop();
+    studyContentFlow.innerHTML = '';
 
-    if (activeTab === 'summary') {
-      loadSummaryTab();
-    } else if (activeTab === 'simulator') {
-      loadSimulatorTab();
-    } else if (activeTab === 'formulas') {
-      loadFormulasTab();
-    } else if (activeTab === 'quiz') {
-      loadQuizTab();
-    }
-  }
-
-  // Tab 1: Summary Text
-  function loadSummaryTab() {
-    summaryTextContainer.innerHTML = '';
+    const content = currentActiveSubchapter.content;
     
-    // Generate description paragraph
-    const p = document.createElement('p');
-    p.textContent = currentActiveSubchapter.summary;
-    summaryTextContainer.appendChild(p);
-    
-    // Render key formula if present
-    if (currentActiveSubchapter.formulas && currentActiveSubchapter.formulas.length > 0) {
-      const f = currentActiveSubchapter.formulas[0];
-      const formulaCard = document.createElement('div');
-      formulaCard.className = 'formula-card';
-      formulaCard.innerHTML = `
-        <div class="formula-math">$$${f.tex}$$</div>
-        <div class="formula-description">${f.desc}</div>
+    // If no content, render a Coming Soon card
+    if (!content || content.trim() === '') {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'coming-soon-card';
+      placeholder.innerHTML = `
+        <i class="fas fa-graduation-cap"></i>
+        <h3>תוכן תת-הפרק ייטען בקרוב</h3>
+        <p>התוכן הלימודי, דוגמאות פתורות ותרגילים אינטראקטיביים עבור נושא זה (${currentActiveSubchapter.id}) ייכתבו בהנחייתך שלב אחר שלב.</p>
       `;
-      summaryTextContainer.appendChild(formulaCard);
-    }
-    
-    // Math syntax highlighting
-    renderMathInElement(summaryTextContainer, {
-      delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false }
-      ],
-      throwOnError: false
-    });
-  }
-
-  // Tab 2: Interactive Equation Simulator
-  function loadSimulatorTab() {
-    simulatorControls.innerHTML = '';
-    
-    // Determine which simulator to boot based on active chapter ID
-    let simType = 'wave';
-    let title = 'סימולטור משוואת הגלים';
-    let controlsHTML = '';
-    
-    const chapterId = parseInt(currentActiveSubchapter.id.split('.')[0]);
-
-    if (chapterId === 7) {
-      simType = 'laplace';
-      title = 'פתרון לפלס בדו-מימד';
-      controlsHTML = `
-        <h4>הגדרות המערכת</h4>
-        <div class="control-group">
-          <label for="laplacePreset">תבנית התחלתית:</label>
-          <select class="control-select" id="laplacePreset">
-            <option value="default">מלבן עם גבולות חמים</option>
-            <option value="center-hotspot">מקור חום פנימי קבוע</option>
-            <option value="center-coldspot">מקור קור פנימי קבוע</option>
-          </select>
-        </div>
-        <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
-          <p><i class="fas fa-info-circle"></i> <strong>הנחיות:</strong></p>
-          <p>הקלק וגרור על לוח הסימולציה כדי לצייר קווי טמפרטורה חמים. המערכת תבצע רלקסציה בזמן אמת לפתרון משוואת לפלס $\\nabla^2 u = 0$.</p>
-          <p><strong>קליק ימני (או Shift + גרור):</strong> מצייר גבולות קרים ($0^\\circ$).</p>
-        </div>
-      `;
-    } else if (chapterId === 6 || chapterId === 5) {
-      simType = 'heat';
-      title = 'פיזור חום חד-ממדי';
-      controlsHTML = `
-        <h4>פרמטרים פיזיקליים</h4>
-        <div class="control-group">
-          <label for="heatDiff">מקדם דיפוזיה ($\\alpha$): <span class="value-display" id="heatDiffVal">0.15</span></label>
-          <input type="range" class="control-input" id="heatDiff" min="0.02" max="0.4" step="0.01" value="0.15">
-        </div>
-        <div class="control-group">
-          <label for="heatBC">תנאי שפה:</label>
-          <select class="control-select" id="heatBC">
-            <option value="insulated">מבודד בקצוות (Neumann)</option>
-            <option value="cold">מקורר ל-0 בקצוות (Dirichlet)</option>
-          </select>
-        </div>
-        <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
-          <p><i class="fas fa-info-circle"></i> <strong>הנחיות:</strong></p>
-          <p>לחצו וגררו על המוט או על הגרף כדי להזריק אנרגיית חום נקודתית נוספת.</p>
-        </div>
-      `;
-    } else {
-      // Default: Wave equation (chapters 1, 2, 3, 4)
-      simType = 'wave';
-      title = 'תנודות מיתר (משוואת הגלים)';
-      controlsHTML = `
-        <h4>פרמטרים פיזיקליים</h4>
-        <div class="control-group">
-          <label for="waveSpeed">מהירות גל ($c$): <span class="value-display" id="waveSpeedVal">2.0</span></label>
-          <input type="range" class="control-input" id="waveSpeed" min="0.5" max="4.0" step="0.1" value="2.0">
-        </div>
-        <div class="control-group">
-          <label for="waveDamping">חיכוך / ריסון: <span class="value-display" id="waveDampingVal">0.002</span></label>
-          <input type="range" class="control-input" id="waveDamping" min="0" max="0.015" step="0.0005" value="0.002">
-        </div>
-        <div class="control-group">
-          <label for="waveBC">תנאי שפה:</label>
-          <select class="control-select" id="waveBC">
-            <option value="fixed">קצוות קשורים (Fixed)</option>
-            <option value="free">קצוות חופשיים (Free)</option>
-          </select>
-        </div>
-        <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4;">
-          <p><i class="fas fa-info-circle"></i> <strong>הנחיות:</strong></p>
-          <p>הקליקו ומשכו את המיתר באמצעות העכבר כדי ליצור הפרעה (תנאי התחלה) ולשחרר.</p>
-        </div>
-      `;
-    }
-
-    // Add header & buttons
-    simulatorControls.innerHTML = `
-      <h3 style="font-size: 1.1rem; margin-bottom: 5px;">${title}</h3>
-      <p style="font-size: 0.78rem; color:var(--text-muted); margin-bottom:15px;">פתרון נומרי מבוסס הפרשים סופיים</p>
-      
-      ${controlsHTML}
-      
-      <div class="simulator-actions">
-        <button class="sim-btn sim-btn-play" id="simPlayBtn"><i class="fas fa-pause"></i><span>עצור</span></button>
-        <button class="sim-btn sim-btn-reset" id="simResetBtn"><i class="fas fa-redo"></i><span>אפס</span></button>
-      </div>
-    `;
-
-    // Initialize simulation manager
-    const activeParams = {};
-    if (simType === 'wave') {
-      activeParams.speed = 2.0;
-      activeParams.damping = 0.002;
-      activeParams.boundary = 'fixed';
-    } else if (simType === 'heat') {
-      activeParams.diffusion = 0.15;
-      activeParams.boundary = 'insulated';
-    } else if (simType === 'laplace') {
-      activeParams.boundaryPreset = 'default';
-    }
-
-    simulatorManager.init('pdeCanvas', simType, activeParams);
-
-    // Bind event listeners to simulation controls dynamically
-    const simPlayBtn = document.getElementById('simPlayBtn');
-    const simResetBtn = document.getElementById('simResetBtn');
-
-    if (simPlayBtn) {
-      simPlayBtn.addEventListener('click', () => {
-        if (simulatorManager.isRunning) {
-          simulatorManager.stop();
-          simPlayBtn.classList.remove('sim-btn-play');
-          simPlayBtn.classList.add('sim-btn-reset');
-          simPlayBtn.innerHTML = '<i class="fas fa-play"></i><span>הפעל</span>';
-        } else {
-          simulatorManager.start();
-          simPlayBtn.classList.add('sim-btn-play');
-          simPlayBtn.classList.remove('sim-btn-reset');
-          simPlayBtn.innerHTML = '<i class="fas fa-pause"></i><span>עצור</span>';
-        }
-      });
-    }
-
-    if (simResetBtn) {
-      simResetBtn.addEventListener('click', () => {
-        simulatorManager.reset();
-      });
-    }
-
-    // Slider inputs listeners
-    const waveSpeedSlider = document.getElementById('waveSpeed');
-    if (waveSpeedSlider) {
-      waveSpeedSlider.addEventListener('input', (e) => {
-        document.getElementById('waveSpeedVal').textContent = e.target.value;
-        simulatorManager.setParam('speed', e.target.value);
-      });
-    }
-
-    const waveDampingSlider = document.getElementById('waveDamping');
-    if (waveDampingSlider) {
-      waveDampingSlider.addEventListener('input', (e) => {
-        document.getElementById('waveDampingVal').textContent = e.target.value;
-        simulatorManager.setParam('damping', e.target.value);
-      });
-    }
-
-    const waveBCSelect = document.getElementById('waveBC');
-    if (waveBCSelect) {
-      waveBCSelect.addEventListener('change', (e) => {
-        simulatorManager.setParam('boundary', e.target.value);
-      });
-    }
-
-    const heatDiffSlider = document.getElementById('heatDiff');
-    if (heatDiffSlider) {
-      heatDiffSlider.addEventListener('input', (e) => {
-        document.getElementById('heatDiffVal').textContent = e.target.value;
-        simulatorManager.setParam('diffusion', e.target.value);
-      });
-    }
-
-    const heatBCSelect = document.getElementById('heatBC');
-    if (heatBCSelect) {
-      heatBCSelect.addEventListener('change', (e) => {
-        simulatorManager.setParam('boundary', e.target.value);
-      });
-    }
-
-    const laplacePresetSelect = document.getElementById('laplacePreset');
-    if (laplacePresetSelect) {
-      laplacePresetSelect.addEventListener('change', (e) => {
-        simulatorManager.setParam('boundaryPreset', e.target.value);
-      });
-    }
-
-    // Render LaTeX formulas in simulator text descriptions
-    renderMathInElement(simulatorControls, {
-      delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false }
-      ],
-      throwOnError: false
-    });
-  }
-
-  // Tab 3: Formula Sheets
-  function loadFormulasTab() {
-    formulasListContainer.innerHTML = '';
-    
-    // Draw all formulas in this subchapter
-    if (currentActiveSubchapter.formulas && currentActiveSubchapter.formulas.length > 0) {
-      currentActiveSubchapter.formulas.forEach(f => {
-        const row = document.createElement('div');
-        row.className = 'equation-row';
-        row.innerHTML = `
-          <div class="equation-meta">
-            <h4>נוסחה תפעולית</h4>
-            <p>${f.desc}</p>
-          </div>
-          <div class="equation-render">$$${f.tex}$$</div>
-        `;
-        formulasListContainer.appendChild(row);
-      });
-    } else {
-      formulasListContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:2rem;">אין נוסחאות רשומות עבור תת-פרק זה.</div>';
-    }
-
-    // MathJax/KaTeX compilation
-    renderMathInElement(formulasListContainer, {
-      delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '$', right: '$', display: false }
-      ],
-      throwOnError: false
-    });
-  }
-
-  // Tab 4: Interactive Quiz Card
-  function loadQuizTab() {
-    quizContainer.innerHTML = '';
-    
-    if (!currentActiveSubchapter.quiz || currentActiveSubchapter.quiz.length === 0) {
-      quizContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:2rem;">אין שאלות תרגול פעילות עבור נושא זה עדיין.</div>';
+      studyContentFlow.appendChild(placeholder);
       return;
     }
 
-    const qData = currentActiveSubchapter.quiz[0]; // load first question
-    let selectedOptionIndex = null;
+    // Inject HTML content
+    studyContentFlow.innerHTML = content;
 
-    const quizCard = document.createElement('div');
-    quizCard.className = 'quiz-card';
-    
-    const questionHeader = document.createElement('div');
-    questionHeader.className = 'quiz-question-header';
-    questionHeader.innerHTML = qData.q;
-    quizCard.appendChild(questionHeader);
+    // Bootstrap inline components
+    bootInlineSimulators();
+    bootInlineQuizzes();
 
-    const optionsContainer = document.createElement('div');
-    optionsContainer.className = 'quiz-options';
-    
-    qData.options.forEach((optText, idx) => {
-      const option = document.createElement('div');
-      option.className = 'quiz-option';
-      option.innerHTML = `
-        <div class="quiz-radio"></div>
-        <span>${optText}</span>
-      `;
-      
-      option.addEventListener('click', () => {
-        // Prevent clicking after submit
-        if (quizCard.classList.contains('submitted')) return;
-
-        document.querySelectorAll('.quiz-option').forEach(el => el.classList.remove('selected'));
-        option.classList.add('selected');
-        selectedOptionIndex = idx;
-        submitBtn.disabled = false;
-      });
-
-      optionsContainer.appendChild(option);
-    });
-    quizCard.appendChild(optionsContainer);
-
-    // Explanation panel
-    const explanationPanel = document.createElement('div');
-    explanationPanel.className = 'quiz-explanation';
-    explanationPanel.innerHTML = `
-      <strong style="display:block; margin-bottom:6px;"><i class="fas fa-info-circle"></i> הסבר פתרון:</strong>
-      <p>${qData.explanation}</p>
-    `;
-    quizCard.appendChild(explanationPanel);
-
-    // Submit button
-    const submitBtn = document.createElement('button');
-    submitBtn.className = 'quiz-submit-btn';
-    submitBtn.textContent = 'בדוק תשובה';
-    submitBtn.disabled = true;
-    
-    submitBtn.addEventListener('click', () => {
-      if (selectedOptionIndex === null) return;
-      
-      quizCard.classList.add('submitted');
-      submitBtn.style.display = 'none';
-
-      const options = document.querySelectorAll('.quiz-option');
-      options.forEach((opt, idx) => {
-        if (idx === qData.correct) {
-          opt.classList.add('correct');
-        } else if (idx === selectedOptionIndex) {
-          opt.classList.add('wrong');
-        }
-      });
-
-      // Show solution explanation
-      explanationPanel.style.display = 'block';
-      
-      // Auto compile math in explanation
-      renderMathInElement(explanationPanel, {
-        delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false }
-        ],
-        throwOnError: false
-      });
-    });
-
-    quizCard.appendChild(submitBtn);
-    quizContainer.appendChild(quizCard);
-
-    // MathJax compilation on question card
-    renderMathInElement(quizCard, {
+    // Render LaTeX equations in the injected content flow
+    renderMathInElement(studyContentFlow, {
       delimiters: [
         { left: '$$', right: '$$', display: true },
         { left: '$', right: '$', display: false }
@@ -682,7 +345,441 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ----------------------------------------------------
-  // 6. EVENT LISTENERS BINDINGS
+  // 6. DYNAMIC COMPONENT LOADER (Simulators & Quizzes)
+  // ----------------------------------------------------
+
+  function bootInlineSimulators() {
+    const placeholders = document.querySelectorAll('.inline-simulator-placeholder');
+    placeholders.forEach((placeholder, idx) => {
+      const simType = placeholder.getAttribute('data-sim') || 'wave';
+      const canvasId = `canvas-sim-${idx}`;
+      
+      let title = 'סימולטור משוואת הגלים';
+      let controlsHTML = '';
+      if (simType === 'laplace') {
+        title = 'פתרון לפלס בדו-מימד';
+        controlsHTML = `
+          <h4>הגדרות המערכת</h4>
+          <div class="control-group">
+            <label for="laplacePreset">תבנית התחלתית:</label>
+            <select class="control-select" id="laplacePreset">
+              <option value="default">מלבן עם גבולות חמים</option>
+              <option value="center-hotspot">מקור חום פנימי קבוע</option>
+              <option value="center-coldspot">מקור קור פנימי קבוע</option>
+            </select>
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4; margin-top:8px;">
+            <p><i class="fas fa-info-circle"></i> <strong>הנחיות:</strong></p>
+            <p>הקלק וגרור על לוח הסימולציה כדי לצייר קווי טמפרטורה חמים. המערכת תבצע רלקסציה בזמן אמת לפתרון משוואת לפלס $\\nabla^2 u = 0$.</p>
+            <p><strong>קליק ימני (או Shift + גרור):</strong> מצייר גבולות קרים ($0^\\circ$).</p>
+          </div>
+        `;
+      } else if (simType === 'heat') {
+        title = 'פיזור חום חד-ממדי';
+        controlsHTML = `
+          <h4>פרמטרים פיזיקליים</h4>
+          <div class="control-group">
+            <label for="heatDiff">מקדם דיפוזיה ($\\alpha$): <span class="value-display" id="heatDiffVal">0.15</span></label>
+            <input type="range" class="control-input" id="heatDiff" min="0.02" max="0.4" step="0.01" value="0.15">
+          </div>
+          <div class="control-group">
+            <label for="heatBC">תנאי שפה:</label>
+            <select class="control-select" id="heatBC">
+              <option value="insulated">מבודד בקצוות (Neumann)</option>
+              <option value="cold">מקורר ל-0 בקצוות (Dirichlet)</option>
+            </select>
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4; margin-top:8px;">
+            <p><i class="fas fa-info-circle"></i> <strong>הנחיות:</strong></p>
+            <p>לחצו וגררו על המוט או על הגרף כדי להזריק אנרגיית חום נקודתית נוספת.</p>
+          </div>
+        `;
+      } else {
+        // Wave
+        title = 'תנודות מיתר (משוואת הגלים)';
+        controlsHTML = `
+          <h4>פרמטרים פיזיקליים</h4>
+          <div class="control-group">
+            <label for="waveSpeed">מהירות גל ($c$): <span class="value-display" id="waveSpeedVal">2.0</span></label>
+            <input type="range" class="control-input" id="waveSpeed" min="0.5" max="4.0" step="0.1" value="2.0">
+          </div>
+          <div class="control-group">
+            <label for="waveDamping">חיכוך / ריסון: <span class="value-display" id="waveDampingVal">0.002</span></label>
+            <input type="range" class="control-input" id="waveDamping" min="0" max="0.015" step="0.0005" value="0.002">
+          </div>
+          <div class="control-group">
+            <label for="waveBC">תנאי שפה:</label>
+            <select class="control-select" id="waveBC">
+              <option value="fixed">קצוות קשורים (Fixed)</option>
+              <option value="free">קצוות חופשיים (Free)</option>
+            </select>
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4; margin-top:8px;">
+            <p><i class="fas fa-info-circle"></i> <strong>הנחיות:</strong></p>
+            <p>הקליקו ומשכו את המיתר באמצעות העכבר כדי ליצור הפרעה (תנאי התחלה) ולשחרר.</p>
+          </div>
+        `;
+      }
+
+      placeholder.className = 'inline-simulator-card';
+      placeholder.innerHTML = `
+        <h3 style="font-size: 1.1rem; margin-bottom: 2px;">${title}</h3>
+        <p style="font-size: 0.78rem; color:var(--text-muted); margin-bottom:15px;">פתרון נומרי מבוסס הפרשים סופיים</p>
+        <div class="simulator-layout">
+          <div class="simulator-controls">
+            ${controlsHTML}
+            <div class="simulator-actions">
+              <button class="sim-btn sim-btn-play" id="simPlayBtn-${idx}"><i class="fas fa-pause"></i><span>עצור</span></button>
+              <button class="sim-btn sim-btn-reset" id="simResetBtn-${idx}"><i class="fas fa-redo"></i><span>אפס</span></button>
+            </div>
+          </div>
+          <div class="simulator-display">
+            <div class="simulator-canvas-wrapper">
+              <canvas class="simulator-canvas" id="${canvasId}"></canvas>
+              <div class="canvas-hint">לחץ וגרור כדי להשפיע על המערכת</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Init simulation
+      const activeParams = {};
+      if (simType === 'wave') {
+        activeParams.speed = 2.0;
+        activeParams.damping = 0.002;
+        activeParams.boundary = 'fixed';
+      } else if (simType === 'heat') {
+        activeParams.diffusion = 0.15;
+        activeParams.boundary = 'insulated';
+      } else if (simType === 'laplace') {
+        activeParams.boundaryPreset = 'default';
+      }
+
+      simulatorManager.init(canvasId, simType, activeParams);
+
+      // Bind buttons
+      const playBtn = document.getElementById(`simPlayBtn-${idx}`);
+      const resetBtn = document.getElementById(`simResetBtn-${idx}`);
+
+      playBtn.addEventListener('click', () => {
+        if (simulatorManager.isRunning) {
+          simulatorManager.stop();
+          playBtn.classList.remove('sim-btn-play');
+          playBtn.classList.add('sim-btn-reset');
+          playBtn.innerHTML = '<i class="fas fa-play"></i><span>הפעל</span>';
+        } else {
+          simulatorManager.start();
+          playBtn.classList.add('sim-btn-play');
+          playBtn.classList.remove('sim-btn-reset');
+          playBtn.innerHTML = '<i class="fas fa-pause"></i><span>עצור</span>';
+        }
+      });
+
+      resetBtn.addEventListener('click', () => {
+        simulatorManager.reset();
+      });
+
+      // Bind sliders
+      const waveSpeed = placeholder.querySelector('#waveSpeed');
+      if (waveSpeed) {
+        waveSpeed.addEventListener('input', (e) => {
+          placeholder.querySelector('#waveSpeedVal').textContent = e.target.value;
+          simulatorManager.setParam('speed', e.target.value);
+        });
+      }
+      const waveDamping = placeholder.querySelector('#waveDamping');
+      if (waveDamping) {
+        waveDamping.addEventListener('input', (e) => {
+          placeholder.querySelector('#waveDampingVal').textContent = e.target.value;
+          simulatorManager.setParam('damping', e.target.value);
+        });
+      }
+      const waveBC = placeholder.querySelector('#waveBC');
+      if (waveBC) {
+        waveBC.addEventListener('change', (e) => {
+          simulatorManager.setParam('boundary', e.target.value);
+        });
+      }
+      const heatDiff = placeholder.querySelector('#heatDiff');
+      if (heatDiff) {
+        heatDiff.addEventListener('input', (e) => {
+          placeholder.querySelector('#heatDiffVal').textContent = e.target.value;
+          simulatorManager.setParam('diffusion', e.target.value);
+        });
+      }
+      const heatBC = placeholder.querySelector('#heatBC');
+      if (heatBC) {
+        heatBC.addEventListener('change', (e) => {
+          simulatorManager.setParam('boundary', e.target.value);
+        });
+      }
+      const laplacePreset = placeholder.querySelector('#laplacePreset');
+      if (laplacePreset) {
+        laplacePreset.addEventListener('change', (e) => {
+          simulatorManager.setParam('boundaryPreset', e.target.value);
+        });
+      }
+    });
+  }
+
+  function bootInlineQuizzes() {
+    // 1. Single Quiz loaders
+    const placeholders = document.querySelectorAll('.inline-quiz-placeholder');
+    placeholders.forEach((placeholder) => {
+      const qIdx = parseInt(placeholder.getAttribute('data-quiz-index') || '0');
+      renderSingleQuiz(placeholder, qIdx);
+    });
+
+    // 2. Carousel Quiz loaders
+    const carousels = document.querySelectorAll('.inline-quiz-carousel-placeholder');
+    carousels.forEach((carousel) => {
+      renderQuizCarousel(carousel);
+    });
+  }
+
+  function renderSingleQuiz(placeholder, qIdx) {
+    if (!currentActiveSubchapter.quizzes || !currentActiveSubchapter.quizzes[qIdx]) return;
+    
+    const qData = currentActiveSubchapter.quizzes[qIdx];
+    let selectedOptionIndex = null;
+
+    placeholder.className = 'quiz-card';
+    placeholder.innerHTML = `
+      <div class="quiz-question-header">${qData.q}</div>
+      <div class="quiz-options"></div>
+      <div class="quiz-explanation">
+        <strong style="display:block; margin-bottom:6px;"><i class="fas fa-info-circle"></i> הסבר פתרון:</strong>
+        <p>${qData.explanation}</p>
+      </div>
+      <button class="quiz-submit-btn" disabled>בדוק תשובה</button>
+    `;
+
+    const optionsContainer = placeholder.querySelector('.quiz-options');
+    const submitBtn = placeholder.querySelector('.quiz-submit-btn');
+    const explanationPanel = placeholder.querySelector('.quiz-explanation');
+
+    qData.options.forEach((optText, idx) => {
+      const option = document.createElement('div');
+      option.className = 'quiz-option';
+      option.innerHTML = `
+        <div class="quiz-radio"></div>
+        <span>${optText}</span>
+      `;
+      
+      option.addEventListener('click', () => {
+        if (placeholder.classList.contains('submitted')) return;
+        placeholder.querySelectorAll('.quiz-option').forEach(el => el.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedOptionIndex = idx;
+        submitBtn.disabled = false;
+      });
+
+      optionsContainer.appendChild(option);
+    });
+
+    submitBtn.addEventListener('click', () => {
+      if (selectedOptionIndex === null) return;
+      placeholder.classList.add('submitted');
+      submitBtn.style.display = 'none';
+
+      const options = placeholder.querySelectorAll('.quiz-option');
+      options.forEach((opt, idx) => {
+        if (idx === qData.correct) {
+          opt.classList.add('correct');
+        } else if (idx === selectedOptionIndex) {
+          opt.classList.add('wrong');
+        }
+      });
+
+      explanationPanel.style.display = 'block';
+      renderMathInElement(explanationPanel, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    });
+  }
+
+  function renderQuizCarousel(container) {
+    if (!currentActiveSubchapter.quizzes || currentActiveSubchapter.quizzes.length === 0) {
+      container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:2rem;">אין שאלות תרגול פעילות.</div>';
+      return;
+    }
+
+    const quizzes = currentActiveSubchapter.quizzes;
+    let activeIndex = 0;
+    
+    // Store user answers/states for the carousel session
+    const quizStates = quizzes.map(() => ({
+      selectedOptionIndex: null,
+      submitted: false,
+      isCorrect: null
+    }));
+
+    function renderSlide() {
+      const qData = quizzes[activeIndex];
+      const state = quizStates[activeIndex];
+      
+      // Update header
+      container.querySelector('#carouselStepText').textContent = `שאלה ${activeIndex + 1} מתוך ${quizzes.length}`;
+      container.querySelector('#carouselProgressFill').style.width = `${((activeIndex + 1) / quizzes.length) * 100}%`;
+
+      // Update dots
+      const dots = container.querySelectorAll('.carousel-dot');
+      dots.forEach((dot, idx) => {
+        dot.className = 'carousel-dot';
+        if (idx === activeIndex) dot.classList.add('active');
+        if (quizStates[idx].submitted) {
+          if (quizStates[idx].isCorrect) dot.classList.add('correct');
+          else dot.classList.add('wrong');
+        }
+      });
+
+      // Update buttons
+      const prevBtn = container.querySelector('#carouselPrevBtn');
+      const nextBtn = container.querySelector('#carouselNextBtn');
+      prevBtn.disabled = activeIndex === 0;
+      
+      if (activeIndex === quizzes.length - 1) {
+        nextBtn.innerHTML = 'סיום תרגול <i class="fas fa-flag-checkered"></i>';
+      } else {
+        nextBtn.innerHTML = 'הבא <i class="fas fa-arrow-left"></i>';
+      }
+
+      // Render slide content
+      const slidesContainer = container.querySelector('#carouselSlides');
+      slidesContainer.innerHTML = '';
+
+      const quizCard = document.createElement('div');
+      quizCard.className = 'quiz-card';
+      quizCard.style.border = 'none';
+      quizCard.style.padding = '0';
+      quizCard.style.backgroundColor = 'transparent';
+      quizCard.style.boxShadow = 'none';
+      quizCard.style.margin = '0';
+
+      if (state.submitted) quizCard.classList.add('submitted');
+
+      quizCard.innerHTML = `
+        <div class="quiz-question-header">${qData.q}</div>
+        <div class="quiz-options"></div>
+        <div class="quiz-explanation" style="${state.submitted ? 'display: block;' : ''}">
+          <strong style="display:block; margin-bottom:6px;"><i class="fas fa-info-circle"></i> הסבר פתרון:</strong>
+          <p>${qData.explanation}</p>
+        </div>
+        <button class="quiz-submit-btn" ${state.selectedOptionIndex !== null && !state.submitted ? '' : 'style="display:none;"'}>בדוק תשובה</button>
+      `;
+
+      const optionsContainer = quizCard.querySelector('.quiz-options');
+      const submitBtn = quizCard.querySelector('.quiz-submit-btn');
+      const explanationPanel = quizCard.querySelector('.quiz-explanation');
+
+      qData.options.forEach((optText, idx) => {
+        const option = document.createElement('div');
+        option.className = 'quiz-option';
+        
+        if (state.submitted) {
+          if (idx === qData.correct) option.classList.add('correct');
+          else if (idx === state.selectedOptionIndex) option.classList.add('wrong');
+        } else if (idx === state.selectedOptionIndex) {
+          option.classList.add('selected');
+        }
+
+        option.innerHTML = `
+          <div class="quiz-radio"></div>
+          <span>${optText}</span>
+        `;
+
+        option.addEventListener('click', () => {
+          if (state.submitted) return;
+          quizCard.querySelectorAll('.quiz-option').forEach(el => el.classList.remove('selected'));
+          option.classList.add('selected');
+          state.selectedOptionIndex = idx;
+          submitBtn.style.display = 'block';
+          submitBtn.disabled = false;
+        });
+
+        optionsContainer.appendChild(option);
+      });
+
+      submitBtn.addEventListener('click', () => {
+        if (state.selectedOptionIndex === null) return;
+        
+        state.submitted = true;
+        state.isCorrect = state.selectedOptionIndex === qData.correct;
+        
+        // Refresh slide view to show correct/incorrect markers and explanation
+        renderSlide();
+      });
+
+      slidesContainer.appendChild(quizCard);
+
+      // Compile math in slide
+      renderMathInElement(quizCard, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+
+    // Outer layout of carousel
+    container.className = 'quiz-carousel';
+    container.innerHTML = `
+      <div class="carousel-header">
+        <span class="carousel-title">תרגול נושא: ${currentActiveSubchapter.title}</span>
+        <span class="carousel-step" id="carouselStepText">שאלה 1 מתוך ${quizzes.length}</span>
+      </div>
+      <div class="carousel-progress-bar">
+        <div class="carousel-progress-fill" id="carouselProgressFill" style="width: 0%;"></div>
+      </div>
+      <div class="carousel-slides" id="carouselSlides"></div>
+      <div class="carousel-navigation">
+        <button class="sim-btn sim-btn-reset" id="carouselPrevBtn" disabled><i class="fas fa-arrow-right"></i> הקודם</button>
+        <div class="carousel-dots" id="carouselDots"></div>
+        <button class="sim-btn sim-btn-play" id="carouselNextBtn">הבא <i class="fas fa-arrow-left"></i></button>
+      </div>
+    `;
+
+    // Render dots
+    const dotsContainer = container.querySelector('#carouselDots');
+    quizzes.forEach((_, idx) => {
+      const dot = document.createElement('div');
+      dot.className = 'carousel-dot';
+      dot.addEventListener('click', () => {
+        activeIndex = idx;
+        renderSlide();
+      });
+      dotsContainer.appendChild(dot);
+    });
+
+    // Navigation bindings
+    container.querySelector('#carouselPrevBtn').addEventListener('click', () => {
+      if (activeIndex > 0) {
+        activeIndex--;
+        renderSlide();
+      }
+    });
+
+    container.querySelector('#carouselNextBtn').addEventListener('click', () => {
+      if (activeIndex < quizzes.length - 1) {
+        activeIndex++;
+        renderSlide();
+      } else {
+        // Complete the topic
+        toggleSubchapterCompletion(currentActiveSubchapter.id);
+        alert('כל הכבוד! סיימת את תרגול הנושא בהצלחה.');
+      }
+    });
+
+    renderSlide();
+  }
+
+  // ----------------------------------------------------
+  // 7. EVENT LISTENERS BINDINGS
   // ----------------------------------------------------
   
   function setupEventListeners() {
@@ -710,20 +807,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentActiveSubchapter) {
         toggleSubchapterCompletion(currentActiveSubchapter.id);
       }
-    });
-
-    // Console Tabs switching
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeTab = btn.getAttribute('data-tab');
-        
-        tabPanes.forEach(pane => pane.classList.remove('active'));
-        document.getElementById(`tab-${activeTab}`).classList.add('active');
-        
-        loadTabContent();
-      });
     });
 
     // Mobile Hamburger Sidebar Toggle
@@ -782,19 +865,14 @@ document.addEventListener('DOMContentLoaded', () => {
     pdeCourseData.forEach(chapter => {
       chapter.subchapters.forEach(sub => {
         const titleMatch = sub.title.toLowerCase().includes(query) || sub.id.includes(query);
-        const summaryMatch = sub.summary.toLowerCase().includes(query);
-        let formulaMatch = false;
-        
-        if (sub.formulas) {
-          formulaMatch = sub.formulas.some(f => f.desc.toLowerCase().includes(query) || f.tex.toLowerCase().includes(query));
-        }
+        const contentMatch = sub.content && sub.content.toLowerCase().includes(query);
 
-        if (titleMatch || summaryMatch || formulaMatch) {
+        if (titleMatch || contentMatch) {
           matches.push({
             subId: sub.id,
             title: `${sub.id} ${sub.title}`,
             chapterTitle: chapter.title,
-            matchText: titleMatch ? 'התאמה בכותרת' : (summaryMatch ? 'התאמה בסיכום השיעור' : 'התאמה בדף הנוסחאות')
+            matchText: titleMatch ? 'התאמה בכותרת' : 'התאמה בתוכן השיעור'
           });
         }
       });

@@ -1159,3 +1159,151 @@ canvas.simulator-canvas {
   direction: ltr !important;
 }
 
+/* Continuous study content flow container */
+.study-content-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+}
+
+/* Empty coming soon state cards */
+.coming-soon-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 2rem;
+  background-color: var(--bg-panel);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius-lg);
+  color: var(--text-muted);
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.coming-soon-card i {
+  font-size: 3rem;
+  color: var(--color-primary-glow);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.coming-soon-card h3 {
+  font-size: 1.4rem;
+  color: var(--text-main);
+}
+
+.coming-soon-card p {
+  font-size: 0.95rem;
+  max-width: 400px;
+}
+
+/* Inline Simulator Card wrapper */
+.inline-simulator-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  box-shadow: var(--shadow-main);
+  backdrop-filter: var(--glass-blur);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Quiz Carousel styling */
+.quiz-carousel {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 1.8rem;
+  margin: 2rem 0;
+  box-shadow: var(--shadow-main);
+  backdrop-filter: var(--glass-blur);
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.carousel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.carousel-title {
+  font-family: var(--font-family-title);
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+.carousel-step {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.carousel-progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.carousel-progress-fill {
+  height: 100%;
+  background: linear-gradient(to left, var(--color-primary), var(--color-secondary));
+  transition: width var(--transition-speed) ease;
+}
+
+.carousel-slides {
+  min-height: 280px;
+}
+
+.carousel-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 15px;
+}
+
+.carousel-dots {
+  display: flex;
+  gap: 8px;
+}
+
+.carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--bg-input);
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+
+.carousel-dot.active {
+  background-color: var(--color-secondary);
+  box-shadow: var(--shadow-glow);
+  transform: scale(1.25);
+}
+
+.carousel-dot.correct {
+  background-color: #10b981;
+}
+
+.carousel-dot.wrong {
+  background-color: #ef4444;
+}
+
+
+
