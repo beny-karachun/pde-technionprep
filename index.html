@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מד"ח TechnionPrep - פורטל משוואות דיפרנציאליות חלקיות</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- KaTeX CSS for LaTeX math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  
+  <!-- KaTeX JS and auto-render extension -->
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="dark">
+
+  <div class="app-container">
+    
+    <!-- 1. HEADER SECTION -->
+    <header>
+      <div class="brand-section">
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="תפריט ניווט">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="brand-logo">$\partial$</div>
+        <div class="brand-title">
+          <h1>מבוא למד"ח</h1>
+          <p>הכנה למבחן בטכניון | TechnionPrep</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <!-- Search bar -->
+        <div class="search-wrapper">
+          <input type="text" class="search-input" id="searchInput" placeholder="חפש נושא, משוואה או משפט...">
+          <i class="fas fa-search search-icon"></i>
+        </div>
+
+        <!-- Light/Dark Mode Switcher -->
+        <button class="theme-toggle-btn" id="themeToggleBtn" title="שנה ערכת נושא">
+          <i class="fas fa-sun" id="themeSunIcon" style="display: none;"></i>
+          <i class="fas fa-moon" id="themeMoonIcon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. SIDEBAR SECTION (RTL: Appears on the Right) -->
+    <aside class="sidebar" id="sidebar">
+      
+      <!-- Circular Progress Dashboard -->
+      <div class="user-progress-panel">
+        <div class="progress-ring-container">
+          <svg width="60" height="60">
+            <circle class="progress-ring-circle" stroke="#1e293b" stroke-width="5" fill="transparent" r="24" cx="30" cy="30" />
+            <circle class="progress-ring-circle" id="progressBarRing" stroke="#00f3ff" stroke-width="5" fill="transparent" r="24" cx="30" cy="30" stroke-dasharray="150.79" stroke-dashoffset="150.79" />
+          </svg>
+          <div class="progress-text" id="progressPctText">0%</div>
+        </div>
+        <div class="progress-info">
+          <h3>התקדמות הלמידה</h3>
+          <p id="progressSubText">0 מתוך 24 נושאים הושלמו</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tree -->
+      <nav class="chapters-nav" id="chaptersNav">
+        <!-- Dynamic sidebar chapters will render here -->
+        <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+          <i class="fas fa-spinner fa-spin"></i> טוען סילבוס...
+        </div>
+      </nav>
+    </aside>
+
+    <!-- 3. MAIN WORKSPACE SECTION -->
+    <main id="mainWorkspace">
+      
+      <!-- Welcome Panel View (Active on load) -->
+      <div class="welcome-panel" id="welcomePanel">
+        <div class="hero-card">
+          <h2>ברוכים הבאים לפורטל הלמידה במד"ח!</h2>
+          <p>
+            כאן תמצאו סיכומי שיעורים אינטראקטיביים, סימולטורים גרפיים המדגימים פתרונות פיזיקליים בזמן אמת, דפי נוסחאות מפורטים ובחני סימולציה המכינים אתכם למבחן בטכניון במשוואות דיפרנציאליות חלקיות.
+          </p>
+          <button class="start-btn" id="startLearningBtn">התחל ללמוד עכשיו</button>
+        </div>
+
+        <h3 style="font-size: 1.4rem; margin-top: 1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 8px;">נושאי הקורס</h3>
+        
+        <div class="chapters-grid" id="welcomeChaptersGrid">
+          <!-- Dynamic welcome cards render here -->
+        </div>
+      </div>
+
+      <!-- Study Console View (Hidden on load) -->
+      <div class="study-console" id="studyConsole" style="display: none;">
+        
+        <!-- Breadcrumbs -->
+        <div class="breadcrumbs">
+          <span style="cursor: pointer;" id="breadcrumbHome">ראשי</span>
+          <i class="fas fa-chevron-left" style="font-size: 0.7rem;"></i>
+          <span id="breadcrumbChapter">שם הפרק</span>
+          <i class="fas fa-chevron-left" style="font-size: 0.7rem;"></i>
+          <span class="active-topic" id="breadcrumbSubchapter">שם תת הפרק</span>
+        </div>
+
+        <!-- Topic Title Card -->
+        <div class="console-header-card">
+          <div class="topic-title-group">
+            <h2 id="consoleTopicTitle">כותרת תת הפרק</h2>
+            <p id="consoleChapterSubtitle">שם הפרק הראשי</p>
+          </div>
+          <button class="mark-completed-large" id="markCompletedBtn">
+            <i class="far fa-circle" id="markCompletedIcon"></i>
+            <span>סמן כהושלם</span>
+          </button>
+        </div>
+
+        <!-- Study Console Tab Switcher -->
+        <div class="tabs-nav">
+          <button class="tab-btn active" data-tab="summary">סיכום שיעור</button>
+          <button class="tab-btn" data-tab="simulator">סימולטור אינטראקטיבי</button>
+          <button class="tab-btn" data-tab="formulas">דף נוסחאות</button>
+          <button class="tab-btn" data-tab="quiz">בחן את עצמך</button>
+        </div>
+
+        <!-- Tab Content Card -->
+        <div class="tab-content">
+          
+          <!-- TAB 1: Summary -->
+          <div class="tab-pane active" id="tab-summary">
+            <div class="summary-text" id="summaryTextContainer">
+              <!-- Summary text injected here -->
+            </div>
+          </div>
+
+          <!-- TAB 2: Simulator -->
+          <div class="tab-pane" id="tab-simulator">
+            <div class="simulator-layout">
+              
+              <!-- Left: Controls Panel -->
+              <div class="simulator-controls" id="simulatorControls">
+                <!-- Controls will be dynamically rendered depending on simulator type -->
+              </div>
+
+              <!-- Right: Visualizer Display -->
+              <div class="simulator-display">
+                <div class="simulator-canvas-wrapper">
+                  <canvas class="simulator-canvas" id="pdeCanvas"></canvas>
+                  <div class="canvas-hint" id="canvasHint">לחץ וגרור כדי להשפיע על המערכת</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 3: Formulas -->
+          <div class="tab-pane" id="tab-formulas">
+            <div class="equations-list" id="formulasListContainer">
+              <!-- Formulas list injected here -->
+            </div>
+          </div>
+
+          <!-- TAB 4: Quiz -->
+          <div class="tab-pane" id="tab-quiz">
+            <div class="quiz-container" id="quizContainer">
+              <!-- Quiz dynamic content -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+
+    <!-- 4. SEARCH RESULTS OVERLAY -->
+    <div class="search-results-overlay" id="searchResultsOverlay">
+      <div class="search-results-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+          <h3>תוצאות חיפוש</h3>
+          <button id="closeSearchBtn" style="background: none; border: none; color: var(--text-main); cursor: pointer; font-size: 1.1rem;"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="searchResultsList" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Results injected here -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Loading JS files -->
+  <script src="data.js"></script>
+  <script src="simulations.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
