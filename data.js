@@ -210,7 +210,75 @@ const pdeCourseData = [
           
           <div class="inline-quiz-carousel-placeholder" data-carousel-id="fullynonlinear" data-carousel-title="האם המשוואה לא-ליניארית לחלוטין?"></div>
 
-          <h3 style="margin-top: 2.5rem;">טבלת סיווג השוואתית</h3>
+          <h3>ההיררכיה בין סוגי המשוואות</h3>
+          <p>סוגי המשוואות אינם מנותקים זה מזה, אלא מקיימים יחס הכלה מתמטי ברור (כלומר, סוג אחד הוא מקרה פרטי ותת-קבוצה של סוג אחר). יחס ההכלה מוגדר בצורה הבאה:</p>
+          <p style="direction: ltr; text-align: center; font-weight: bold; font-size: 1.15rem; color: var(--color-primary);">משוואות ליניאריות &subsetneq; משוואות סמי-ליניאריות &subsetneq; משוואות קוואזי-ליניאריות &subsetneq; כלל המד"ח (PDEs)</p>
+
+          <p><strong>האם משוואה ליניארית היא סמי-ליניארית? כן, בהכרח!</strong> כל משוואה ליניארית היא מקרה פרטי של משוואה סמי-ליניארית שבה האי-ליניאריות באיברים מסדר נמוך היא פשוט אפס (כלומר, גם האיברים מסדר נמוך הם ליניאריים).</p>
+          <p>באותו אופן, <strong>כל משוואה סמי-ליניארית היא בהכרח קוואזי-ליניארית</strong>. משוואה סמי-ליניארית היא מקרה פרטי של משוואה קוואזי-ליניארית שבה מקדמי הנגזרות הגבוהות ביותר תלויים במשתנים העצמאיים בלבד (ללא תלות בפונקציה הנעלמת $u$ או בנגזרותיה).</p>
+          <p>לסיום, <strong>משוואות לא-ליניאריות לחלוטין (Fully Non-linear)</strong> מייצגות את כל אותן משוואות שנמצאות מחוץ לקבוצת הקוואזי-ליניאריות. אלו הן משוואות שבהן הנגזרות מהסדר הגבוה ביותר מופיעות בצורה לא-ליניארית בעצמן (למשל מועלות בחזקה, נמצאות בתוך פונקציה כמו סינוס או שורש, או מוכפלות זו בזו).</p>
+
+          <p>לפניכם דיאגרמת היררכיה הממחישה את יחסי ההכלה הללו בצורה ויזואלית מבוססת קבוצות מוכלות ומוכלות ממש. שימו לב שהדיאגרמה מגיבה לערכות הנושא (אור/חושך) בזמן אמת וכוללת את סימני ההכלה המדויקים:</p>
+
+          <div class="hierarchy-diagram-container">
+            <div class="inclusion-chain">
+              <span class="chain-item linear">משוואות ליניאריות</span>
+              <span class="chain-symbol">$\\subsetneq$ (מוכל ממש)</span>
+              <span class="chain-item semi">משוואות סמי-ליניאריות</span>
+              <span class="chain-symbol">$\\subsetneq$ (מוכל ממש)</span>
+              <span class="chain-item quasi">משוואות קוואזי-ליניאריות</span>
+              <span class="chain-symbol">$\\subsetneq$ (מוכל ממש)</span>
+              <span class="chain-item all-pdes">כלל המד"ח (PDEs)</span>
+            </div>
+
+            <div class="map-pdes-wrapper">
+              <div class="pdes-header">
+                <span class="pdes-title">מרחב כלל המד"ח (PDEs)</span>
+              </div>
+              
+              <div class="nested-map-wrapper">
+                <!-- Left: Nested sets (Linear in Semi-linear in Quasi-linear) -->
+                <div class="map-nested-group">
+                  <div class="map-quasi-box">
+                    <div class="map-box-header">
+                      <span class="map-box-title quasi">קוואזי-ליניאריות (Quasi-Linear)</span>
+                      <span class="map-box-formula">$u u_x + u_y = 0$</span>
+                    </div>
+                    <div class="map-box-desc">המקדמים של הנגזרות הגבוהות יכולים להיות תלויים ב-$u$ או בנגזרותיה. מוכל ממש ($\\subsetneq$) בכלל המד"ח.</div>
+                    
+                    <div class="map-semi-box">
+                      <div class="map-box-header">
+                        <span class="map-box-title semi">סמי-ליניאריות (Semi-Linear)</span>
+                        <span class="map-box-formula">$u_{xx} + u_{yy} = e^u$</span>
+                      </div>
+                      <div class="map-box-desc">המקדמים של הנגזרות הגבוהות תלויים במשתנים העצמאיים בלבד. מוכל ממש ($\\subsetneq$) בקוואזי-ליניאריות.</div>
+                      
+                      <div class="map-linear-box">
+                        <div class="map-box-header">
+                          <span class="map-box-title linear">משוואות ליניאריות (Linear)</span>
+                          <span class="map-box-formula">$u_{xx} + u_{yy} = x^2$</span>
+                        </div>
+                        <div class="map-box-desc">הפונקציה $u$ וכל נגזרותיה מופיעות ממעלה ראשונה בלבד. מוכל ממש ($\\subsetneq$) בסמי-ליניאריות.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: Fully Non-Linear (stands alone within PDEs, outside Quasi-linear) -->
+                <div class="map-fully-nonlinear-box">
+                  <div class="map-box-header">
+                    <span class="map-box-title fully">לא-ליניאריות לחלוטין (Fully Non-linear)</span>
+                  </div>
+                  <div class="map-box-desc" style="margin-bottom: 12px;">הנגזרות מהסדר הגבוה ביותר מופיעות בצורה לא-ליניארית (בריבוע, בתוך פונקציה, או מוכפלות).</div>
+                  <div style="margin-top: auto; display: flex; justify-content: center;">
+                    <span class="map-box-formula">$(u_x)^2 + (u_y)^2 = 1$</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.8rem;">טבלת סיווג השוואתית</h3>
           <div style="overflow-x: auto; margin: 1.5rem 0; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm);">
             <table style="width: 100%; border-collapse: collapse; text-align: right; font-size: 0.95rem;">
               <thead>
@@ -251,7 +319,7 @@ const pdeCourseData = [
           </div>
 
           <div class="coming-soon-card" style="background-color: rgba(var(--hue-primary), 0.03); border: 1px solid var(--border-color); padding: 1.5rem; text-align: right; align-items: flex-start; margin: 1.5rem 0; display: flex; flex-direction: column;">
-            <h4 style="color: var(--color-secondary); margin-bottom: 8px;"><i class="fas fa-exclamation-triangle"></i> ממה סטונדטים מתבלבלים במבחנים? (מלכודות נפוצות)</h4>
+            <h4 style="color: var(--color-secondary); margin-bottom: 8px;"><i class="fas fa-exclamation-triangle"></i> ממה סטודנטים מתבלבלים במבחנים? (מלכודות נפוצות)</h4>
             <ol style="margin-right: 1.5rem; font-size: 0.95rem; line-height: 1.6;">
               <li><strong>סמי-ליניארית לעומת קוואזי-ליניארית:</strong> שלב ראשון הוא תמיד זיהוי סדר המשוואה (הנגזרת הגבוהה ביותר). במשוואת בורגרס המלאה $u_t - \nu u_{xx} + u u_x = 0$, הנגזרת הגבוהה ביותר היא מסדר שני ($u_{xx}$). המקדם שלה הוא $\nu$ (קבוע), ולכן המשוואה היא <strong>סמי-ליניארית</strong>, ולא קוואזי-ליניארית, למרות האיבר הלא-ליניארי $u u_x$ (שהוא מסדר ראשון בלבד!).</li>
               <li><strong>משתנים עצמאיים אינם משפיעים על הליניאריות:</strong> המונח "ליניאריות" מתייחס אך ורק לתלות בפונקציה הנעלמת $u$ ובנגזרותיה. מקדמים שתלויים במרחב או בזמן בלבד (כגון $\sin(x)$ או $e^y$) אינם משנים את דרגת הליניאריות.</li>

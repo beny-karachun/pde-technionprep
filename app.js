@@ -642,8 +642,9 @@ document.addEventListener('DOMContentLoaded', () => {
       prevBtn.disabled = activeIndex === 0;
       
       if (activeIndex === quizzes.length - 1) {
-        nextBtn.innerHTML = 'סיום תרגול <i class="fas fa-flag-checkered"></i>';
+        nextBtn.style.visibility = 'hidden';
       } else {
+        nextBtn.style.visibility = 'visible';
         nextBtn.innerHTML = 'הבא <i class="fas fa-arrow-left"></i>';
       }
 
@@ -764,10 +765,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (activeIndex < quizzes.length - 1) {
         activeIndex++;
         renderSlide();
-      } else {
-        // Complete the topic
-        toggleSubchapterCompletion(currentActiveSubchapter.id);
-        alert('כל הכבוד! סיימת את תרגול הנושא בהצלחה.');
       }
     });
 
