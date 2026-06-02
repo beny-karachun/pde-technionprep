@@ -1305,5 +1305,16 @@ canvas.simulator-canvas {
   background-color: #ef4444;
 }
 
+/* Horizontal Yes/No options layout */
+.quiz-options.yes-no {
+  flex-direction: row !important;
+  gap: 15px;
+}
+
+.quiz-options.yes-no .quiz-option {
+  flex: 1;
+  justify-content: center;
+}
+
 
 

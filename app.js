@@ -541,7 +541,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!currentActiveSubchapter.quizzes || !currentActiveSubchapter.quizzes[qIdx]) return;
     
     const qData = currentActiveSubchapter.quizzes[qIdx];
-    let selectedOptionIndex = null;
 
     placeholder.className = 'quiz-card';
     placeholder.innerHTML = `
@@ -551,11 +550,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong style="display:block; margin-bottom:6px;"><i class="fas fa-info-circle"></i> הסבר פתרון:</strong>
         <p>${qData.explanation}</p>
       </div>
-      <button class="quiz-submit-btn" disabled>בדוק תשובה</button>
     `;
 
     const optionsContainer = placeholder.querySelector('.quiz-options');
-    const submitBtn = placeholder.querySelector('.quiz-submit-btn');
     const explanationPanel = placeholder.querySelector('.quiz-explanation');
 
     qData.options.forEach((optText, idx) => {
@@ -568,47 +565,49 @@ document.addEventListener('DOMContentLoaded', () => {
       
       option.addEventListener('click', () => {
         if (placeholder.classList.contains('submitted')) return;
-        placeholder.querySelectorAll('.quiz-option').forEach(el => el.classList.remove('selected'));
-        option.classList.add('selected');
-        selectedOptionIndex = idx;
-        submitBtn.disabled = false;
+        placeholder.classList.add('submitted');
+
+        const options = optionsContainer.querySelectorAll('.quiz-option');
+        options.forEach((opt, oIdx) => {
+          if (oIdx === qData.correct) {
+            opt.classList.add('correct');
+          } else if (oIdx === idx) {
+            opt.classList.add('wrong');
+          }
+        });
+
+        explanationPanel.style.display = 'block';
+        renderMathInElement(explanationPanel, {
+          delimiters: [
+            { left: '$$', right: '$$', display: true },
+            { left: '$', right: '$', display: false }
+          ],
+          throwOnError: false
+        });
       });
 
       optionsContainer.appendChild(option);
     });
-
-    submitBtn.addEventListener('click', () => {
-      if (selectedOptionIndex === null) return;
-      placeholder.classList.add('submitted');
-      submitBtn.style.display = 'none';
-
-      const options = placeholder.querySelectorAll('.quiz-option');
-      options.forEach((opt, idx) => {
-        if (idx === qData.correct) {
-          opt.classList.add('correct');
-        } else if (idx === selectedOptionIndex) {
-          opt.classList.add('wrong');
-        }
-      });
-
-      explanationPanel.style.display = 'block';
-      renderMathInElement(explanationPanel, {
-        delimiters: [
-          { left: '$$', right: '$$', display: true },
-          { left: '$', right: '$', display: false }
-        ],
-        throwOnError: false
-      });
-    });
   }
 
   function renderQuizCarousel(container) {
-    if (!currentActiveSubchapter.quizzes || currentActiveSubchapter.quizzes.length === 0) {
+    const carouselId = container.getAttribute('data-carousel-id');
+    let quizzes = [];
+    
+    if (carouselId) {
+      if (currentActiveSubchapter.quizzes && currentActiveSubchapter.quizzes[carouselId]) {
+        quizzes = currentActiveSubchapter.quizzes[carouselId];
+      }
+    } else {
+      quizzes = currentActiveSubchapter.quizzes || [];
+    }
+
+    if (!quizzes || quizzes.length === 0) {
       container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:2rem;">אין שאלות תרגול פעילות.</div>';
       return;
     }
 
-    const quizzes = currentActiveSubchapter.quizzes;
+    const customTitle = container.getAttribute('data-carousel-title') || `נושא: ${currentActiveSubchapter.title}`;
     let activeIndex = 0;
     
     // Store user answers/states for the carousel session
@@ -669,12 +668,18 @@ document.addEventListener('DOMContentLoaded', () => {
           <strong style="display:block; margin-bottom:6px;"><i class="fas fa-info-circle"></i> הסבר פתרון:</strong>
           <p>${qData.explanation}</p>
         </div>
-        <button class="quiz-submit-btn" ${state.selectedOptionIndex !== null && !state.submitted ? '' : 'style="display:none;"'}>בדוק תשובה</button>
       `;
 
       const optionsContainer = quizCard.querySelector('.quiz-options');
-      const submitBtn = quizCard.querySelector('.quiz-submit-btn');
       const explanationPanel = quizCard.querySelector('.quiz-explanation');
+
+      // Check if it is a Yes/No question to apply a side-by-side flex layout
+      const isYesNo = qData.options.length === 2 && 
+                      (qData.options[0] === 'כן' || qData.options[0] === 'לא') && 
+                      (qData.options[1] === 'כן' || qData.options[1] === 'לא');
+      if (isYesNo) {
+        optionsContainer.classList.add('yes-no');
+      }
 
       qData.options.forEach((optText, idx) => {
         const option = document.createElement('div');
@@ -694,24 +699,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         option.addEventListener('click', () => {
           if (state.submitted) return;
-          quizCard.querySelectorAll('.quiz-option').forEach(el => el.classList.remove('selected'));
-          option.classList.add('selected');
           state.selectedOptionIndex = idx;
-          submitBtn.style.display = 'block';
-          submitBtn.disabled = false;
+          state.submitted = true;
+          state.isCorrect = idx === qData.correct;
+          
+          // Refresh slide view to show correct/incorrect markers and explanation
+          renderSlide();
         });
 
         optionsContainer.appendChild(option);
-      });
-
-      submitBtn.addEventListener('click', () => {
-        if (state.selectedOptionIndex === null) return;
-        
-        state.submitted = true;
-        state.isCorrect = state.selectedOptionIndex === qData.correct;
-        
-        // Refresh slide view to show correct/incorrect markers and explanation
-        renderSlide();
       });
 
       slidesContainer.appendChild(quizCard);
@@ -730,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container.className = 'quiz-carousel';
     container.innerHTML = `
       <div class="carousel-header">
-        <span class="carousel-title">תרגול נושא: ${currentActiveSubchapter.title}</span>
+        <span class="carousel-title">${customTitle}</span>
         <span class="carousel-step" id="carouselStepText">שאלה 1 מתוך ${quizzes.length}</span>
       </div>
       <div class="carousel-progress-bar">
