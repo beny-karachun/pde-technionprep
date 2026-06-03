@@ -4,6 +4,33 @@
  * and inline rendering of study materials, equations, simulators, and quizzes in a continuous flow.
  */
 
+// Global runtime error visualizer for easy debugging
+window.addEventListener('error', (e) => {
+  const errBox = document.createElement('div');
+  errBox.style.position = 'fixed';
+  errBox.style.bottom = '20px';
+  errBox.style.left = '20px';
+  errBox.style.backgroundColor = 'rgba(239, 68, 68, 0.95)';
+  errBox.style.color = '#ffffff';
+  errBox.style.padding = '16px';
+  errBox.style.borderRadius = '8px';
+  errBox.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.5)';
+  errBox.style.zIndex = '999999';
+  errBox.style.fontFamily = 'monospace';
+  errBox.style.fontSize = '12px';
+  errBox.style.maxWidth = '500px';
+  errBox.style.lineHeight = '1.5';
+  errBox.style.border = '1px solid #f87171';
+  
+  errBox.innerHTML = `
+    <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px;">⚠️ Runtime Error Detected:</div>
+    <div style="margin-bottom: 6px;"><strong>Msg:</strong> ${e.message}</div>
+    <div style="margin-bottom: 6px;"><strong>File:</strong> ${e.filename ? e.filename.split('/').pop() : 'unknown'}</div>
+    <div><strong>Line:</strong> ${e.lineno}:${e.colno}</div>
+  `;
+  document.body.appendChild(errBox);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   // State variables
   let completedSubchapters = JSON.parse(localStorage.getItem('pde_completed_topics')) || [];
@@ -309,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!currentActiveSubchapter) return;
     
     // Clear simulator state before rendering new page
-    simulatorManager.stop();
+    simulatorManager.stopAll();
     studyContentFlow.innerHTML = '';
 
     const content = currentActiveSubchapter.content;
@@ -355,6 +382,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const canvasId = `canvas-sim-${idx}`;
       
       let title = 'סימולטור משוואת הגלים';
+      let desc = 'פתרון נומרי מבוסס הפרשים סופיים';
+      let hint = 'לחץ וגרור כדי להשפיע על המערכת';
       let controlsHTML = '';
       if (simType === 'laplace') {
         title = 'פתרון לפלס בדו-מימד';
@@ -394,6 +423,41 @@ document.addEventListener('DOMContentLoaded', () => {
             <p>לחצו וגררו על המוט או על הגרף כדי להזריק אנרגיית חום נקודתית נוספת.</p>
           </div>
         `;
+      } else if (simType === 'transversality') {
+        title = 'הדמיית תנאי הטרנסוורסליות';
+        desc = 'בדיקת משיקיות והקבלה לאופיינים בזמן אמת';
+        hint = '';
+        controlsHTML = `
+          <h4>בחירת המערכת</h4>
+          <div class="control-group">
+            <label for="transCharType">סוג הקווים האופייניים:</label>
+            <select class="control-select" id="transCharType">
+              <option value="horizontal">קווים אופקיים (ux = 0)</option>
+              <option value="diagonal">קווים אלכסוניים (ux - uy = 0)</option>
+              <option value="circular">מעגלים קונצנטריים (y ux - x uy = 0)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="transCurveType">סוג עקום ההתחלה:</label>
+            <select class="control-select" id="transCurveType">
+              <option value="line">ישר (Line)</option>
+              <option value="parabola">פרבולה (Parabola)</option>
+              <option value="sine">עקום סינוסוידלי (Sine)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="transAngle">זווית עקום ההתחלה: <span class="value-display" id="transAngleVal">90°</span></label>
+            <input type="range" class="control-input" id="transAngle" min="0" max="180" step="5" value="90">
+          </div>
+          <div class="control-group">
+            <label for="transOffset">הזזה (Offset): <span class="value-display" id="transOffsetVal">0</span></label>
+            <input type="range" class="control-input" id="transOffset" min="-100" max="100" step="5" value="0">
+          </div>
+          <div style="font-size:0.78rem; color:var(--text-muted); line-height:1.4; margin-top:8px;">
+            <p><i class="fas fa-info-circle"></i> <strong>הנחיות:</strong></p>
+            <p>שנו את הפרמטרים של עקום ההתחלה (סגול) וראו מתי הוא הופך ל<strong>אדום</strong> (מפר את תנאי הטרנסוורסליות) ומציג הילה אדומה סביב נקודות המשיקיות/הקבלה לאופיינים (הכתומים).</p>
+          </div>
+        `;
       } else {
         // Wave
         title = 'תנודות מיתר (משוואת הגלים)';
@@ -424,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
       placeholder.className = 'inline-simulator-card';
       placeholder.innerHTML = `
         <h3 style="font-size: 1.1rem; margin-bottom: 2px;">${title}</h3>
-        <p style="font-size: 0.78rem; color:var(--text-muted); margin-bottom:15px;">פתרון נומרי מבוסס הפרשים סופיים</p>
+        <p style="font-size: 0.78rem; color:var(--text-muted); margin-bottom:15px;">${desc}</p>
         <div class="simulator-layout">
           <div class="simulator-controls">
             ${controlsHTML}
@@ -436,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="simulator-display">
             <div class="simulator-canvas-wrapper">
               <canvas class="simulator-canvas" id="${canvasId}"></canvas>
-              <div class="canvas-hint">לחץ וגרור כדי להשפיע על המערכת</div>
+              ${hint ? `<div class="canvas-hint">${hint}</div>` : ''}
             </div>
           </div>
         </div>
@@ -453,6 +517,11 @@ document.addEventListener('DOMContentLoaded', () => {
         activeParams.boundary = 'insulated';
       } else if (simType === 'laplace') {
         activeParams.boundaryPreset = 'default';
+      } else if (simType === 'transversality') {
+        activeParams.charType = 'horizontal';
+        activeParams.curveType = 'line';
+        activeParams.angle = 90;
+        activeParams.offset = 0;
       }
 
       simulatorManager.init(canvasId, simType, activeParams);
@@ -462,13 +531,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const resetBtn = document.getElementById(`simResetBtn-${idx}`);
 
       playBtn.addEventListener('click', () => {
-        if (simulatorManager.isRunning) {
-          simulatorManager.stop();
+        if (simulatorManager.isRunning[canvasId]) {
+          simulatorManager.stop(canvasId);
           playBtn.classList.remove('sim-btn-play');
           playBtn.classList.add('sim-btn-reset');
           playBtn.innerHTML = '<i class="fas fa-play"></i><span>הפעל</span>';
         } else {
-          simulatorManager.start();
+          simulatorManager.start(canvasId);
           playBtn.classList.add('sim-btn-play');
           playBtn.classList.remove('sim-btn-reset');
           playBtn.innerHTML = '<i class="fas fa-pause"></i><span>עצור</span>';
@@ -476,7 +545,27 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       resetBtn.addEventListener('click', () => {
-        simulatorManager.reset();
+        simulatorManager.reset(canvasId);
+        if (simType === 'transversality') {
+          const transCharType = placeholder.querySelector('#transCharType');
+          const transCurveType = placeholder.querySelector('#transCurveType');
+          const transAngle = placeholder.querySelector('#transAngle');
+          const transOffset = placeholder.querySelector('#transOffset');
+          if (transCharType) transCharType.value = 'horizontal';
+          if (transCurveType) transCurveType.value = 'line';
+          if (transAngle) {
+            transAngle.value = 90;
+            placeholder.querySelector('#transAngleVal').textContent = '90°';
+          }
+          if (transOffset) {
+            transOffset.value = 0;
+            placeholder.querySelector('#transOffsetVal').textContent = '0';
+          }
+          simulatorManager.setParam(canvasId, 'charType', 'horizontal');
+          simulatorManager.setParam(canvasId, 'curveType', 'line');
+          simulatorManager.setParam(canvasId, 'angle', 90);
+          simulatorManager.setParam(canvasId, 'offset', 0);
+        }
       });
 
       // Bind sliders
@@ -484,39 +573,65 @@ document.addEventListener('DOMContentLoaded', () => {
       if (waveSpeed) {
         waveSpeed.addEventListener('input', (e) => {
           placeholder.querySelector('#waveSpeedVal').textContent = e.target.value;
-          simulatorManager.setParam('speed', e.target.value);
+          simulatorManager.setParam(canvasId, 'speed', e.target.value);
         });
       }
       const waveDamping = placeholder.querySelector('#waveDamping');
       if (waveDamping) {
         waveDamping.addEventListener('input', (e) => {
           placeholder.querySelector('#waveDampingVal').textContent = e.target.value;
-          simulatorManager.setParam('damping', e.target.value);
+          simulatorManager.setParam(canvasId, 'damping', e.target.value);
         });
       }
       const waveBC = placeholder.querySelector('#waveBC');
       if (waveBC) {
         waveBC.addEventListener('change', (e) => {
-          simulatorManager.setParam('boundary', e.target.value);
+          simulatorManager.setParam(canvasId, 'boundary', e.target.value);
         });
       }
       const heatDiff = placeholder.querySelector('#heatDiff');
       if (heatDiff) {
         heatDiff.addEventListener('input', (e) => {
           placeholder.querySelector('#heatDiffVal').textContent = e.target.value;
-          simulatorManager.setParam('diffusion', e.target.value);
+          simulatorManager.setParam(canvasId, 'diffusion', e.target.value);
         });
       }
       const heatBC = placeholder.querySelector('#heatBC');
       if (heatBC) {
         heatBC.addEventListener('change', (e) => {
-          simulatorManager.setParam('boundary', e.target.value);
+          simulatorManager.setParam(canvasId, 'boundary', e.target.value);
         });
       }
       const laplacePreset = placeholder.querySelector('#laplacePreset');
       if (laplacePreset) {
         laplacePreset.addEventListener('change', (e) => {
-          simulatorManager.setParam('boundaryPreset', e.target.value);
+          simulatorManager.setParam(canvasId, 'boundaryPreset', e.target.value);
+        });
+      }
+      const transCharType = placeholder.querySelector('#transCharType');
+      if (transCharType) {
+        transCharType.addEventListener('change', (e) => {
+          simulatorManager.setParam(canvasId, 'charType', e.target.value);
+        });
+      }
+      const transCurveType = placeholder.querySelector('#transCurveType');
+      if (transCurveType) {
+        transCurveType.addEventListener('change', (e) => {
+          simulatorManager.setParam(canvasId, 'curveType', e.target.value);
+        });
+      }
+      const transAngle = placeholder.querySelector('#transAngle');
+      if (transAngle) {
+        transAngle.addEventListener('input', (e) => {
+          placeholder.querySelector('#transAngleVal').textContent = e.target.value + '°';
+          simulatorManager.setParam(canvasId, 'angle', e.target.value);
+        });
+      }
+      const transOffset = placeholder.querySelector('#transOffset');
+      if (transOffset) {
+        transOffset.addEventListener('input', (e) => {
+          placeholder.querySelector('#transOffsetVal').textContent = e.target.value;
+          simulatorManager.setParam(canvasId, 'offset', e.target.value);
         });
       }
     });
@@ -622,8 +737,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const state = quizStates[activeIndex];
       
       // Update header
-      container.querySelector('#carouselStepText').textContent = `שאלה ${activeIndex + 1} מתוך ${quizzes.length}`;
-      container.querySelector('#carouselProgressFill').style.width = `${((activeIndex + 1) / quizzes.length) * 100}%`;
+      container.querySelector('.carousel-step').textContent = `שאלה ${activeIndex + 1} מתוך ${quizzes.length}`;
+      container.querySelector('.carousel-progress-fill').style.width = `${((activeIndex + 1) / quizzes.length) * 100}%`;
 
       // Update dots
       const dots = container.querySelectorAll('.carousel-dot');
@@ -637,8 +752,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       // Update buttons
-      const prevBtn = container.querySelector('#carouselPrevBtn');
-      const nextBtn = container.querySelector('#carouselNextBtn');
+      const prevBtn = container.querySelector('.carousel-prev-btn');
+      const nextBtn = container.querySelector('.carousel-next-btn');
       prevBtn.disabled = activeIndex === 0;
       
       if (activeIndex === quizzes.length - 1) {
@@ -649,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Render slide content
-      const slidesContainer = container.querySelector('#carouselSlides');
+      const slidesContainer = container.querySelector('.carousel-slides');
       slidesContainer.innerHTML = '';
 
       const quizCard = document.createElement('div');
@@ -728,21 +843,21 @@ document.addEventListener('DOMContentLoaded', () => {
     container.innerHTML = `
       <div class="carousel-header">
         <span class="carousel-title">${customTitle}</span>
-        <span class="carousel-step" id="carouselStepText">שאלה 1 מתוך ${quizzes.length}</span>
+        <span class="carousel-step">שאלה 1 מתוך ${quizzes.length}</span>
       </div>
       <div class="carousel-progress-bar">
-        <div class="carousel-progress-fill" id="carouselProgressFill" style="width: 0%;"></div>
+        <div class="carousel-progress-fill" style="width: 0%;"></div>
       </div>
-      <div class="carousel-slides" id="carouselSlides"></div>
+      <div class="carousel-slides"></div>
       <div class="carousel-navigation">
-        <button class="sim-btn sim-btn-reset" id="carouselPrevBtn" disabled><i class="fas fa-arrow-right"></i> הקודם</button>
-        <div class="carousel-dots" id="carouselDots"></div>
-        <button class="sim-btn sim-btn-play" id="carouselNextBtn">הבא <i class="fas fa-arrow-left"></i></button>
+        <button class="sim-btn sim-btn-reset carousel-prev-btn" disabled><i class="fas fa-arrow-right"></i> הקודם</button>
+        <div class="carousel-dots"></div>
+        <button class="sim-btn sim-btn-play carousel-next-btn">הבא <i class="fas fa-arrow-left"></i></button>
       </div>
     `;
 
     // Render dots
-    const dotsContainer = container.querySelector('#carouselDots');
+    const dotsContainer = container.querySelector('.carousel-dots');
     quizzes.forEach((_, idx) => {
       const dot = document.createElement('div');
       dot.className = 'carousel-dot';
@@ -754,14 +869,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Navigation bindings
-    container.querySelector('#carouselPrevBtn').addEventListener('click', () => {
+    container.querySelector('.carousel-prev-btn').addEventListener('click', () => {
       if (activeIndex > 0) {
         activeIndex--;
         renderSlide();
       }
     });
 
-    container.querySelector('#carouselNextBtn').addEventListener('click', () => {
+    container.querySelector('.carousel-next-btn').addEventListener('click', () => {
       if (activeIndex < quizzes.length - 1) {
         activeIndex++;
         renderSlide();

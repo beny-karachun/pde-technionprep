@@ -3,82 +3,97 @@
  * Implements real-time numerical solvers for Wave, Heat, and Laplace equations on HTML5 Canvas.
  */
 
-// Common simulation state manager
+// Common simulation state manager supporting multiple active simulators concurrently
 class PdeSimulationManager {
   constructor() {
-    this.currentSim = null;
-    this.animationFrameId = null;
-    this.canvas = null;
-    this.ctx = null;
-    this.isRunning = false;
+    this.activeSims = {}; // canvasId -> SimInstance
+    this.isRunning = {}; // canvasId -> Boolean
+    this.animationFrameIds = {}; // canvasId -> frameId
   }
 
   init(canvasId, type, controls) {
-    this.stop();
-    this.canvas = document.getElementById(canvasId);
-    if (!this.canvas) return;
-    this.ctx = this.canvas.getContext('2d');
+    this.stop(canvasId);
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     
     // Make canvas sharp on high DPI screens
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
-    this.ctx.scale(dpr, dpr);
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
 
+    let sim = null;
     switch (type) {
       case 'wave':
-        this.currentSim = new WaveSimulation(this.canvas, this.ctx, controls);
+        sim = new WaveSimulation(canvas, ctx, controls);
         break;
       case 'heat':
-        this.currentSim = new HeatSimulation(this.canvas, this.ctx, controls);
+        sim = new HeatSimulation(canvas, ctx, controls);
         break;
       case 'laplace':
-        this.currentSim = new LaplaceSimulation(this.canvas, this.ctx, controls);
+        sim = new LaplaceSimulation(canvas, ctx, controls);
+        break;
+      case 'transversality':
+        sim = new TransversalitySimulation(canvas, ctx, controls);
         break;
     }
 
-    if (this.currentSim) {
-      this.currentSim.init();
-      this.start();
+    if (sim) {
+      this.activeSims[canvasId] = sim;
+      sim.init();
+      this.start(canvasId);
     }
   }
 
-  start() {
-    if (this.isRunning) return;
-    this.isRunning = true;
+  start(canvasId) {
+    if (this.isRunning[canvasId]) return;
+    this.isRunning[canvasId] = true;
+    
     const loop = () => {
-      if (!this.isRunning) return;
-      if (this.currentSim) {
-        this.currentSim.update();
-        this.currentSim.draw();
+      if (!this.isRunning[canvasId]) return;
+      const sim = this.activeSims[canvasId];
+      if (sim) {
+        sim.update();
+        sim.draw();
       }
-      this.animationFrameId = requestAnimationFrame(loop);
+      this.animationFrameIds[canvasId] = requestAnimationFrame(loop);
     };
-    this.animationFrameId = requestAnimationFrame(loop);
+    this.animationFrameIds[canvasId] = requestAnimationFrame(loop);
   }
 
-  stop() {
-    this.isRunning = false;
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+  stop(canvasId) {
+    this.isRunning[canvasId] = false;
+    if (this.animationFrameIds[canvasId]) {
+      cancelAnimationFrame(this.animationFrameIds[canvasId]);
+      delete this.animationFrameIds[canvasId];
     }
-    if (this.currentSim) {
-      this.currentSim.cleanup();
-      this.currentSim = null;
-    }
-  }
-
-  reset() {
-    if (this.currentSim) {
-      this.currentSim.reset();
+    const sim = this.activeSims[canvasId];
+    if (sim) {
+      sim.cleanup();
+      delete this.activeSims[canvasId];
     }
   }
 
-  setParam(name, value) {
-    if (this.currentSim) {
-      this.currentSim.setParam(name, value);
+  stopAll() {
+    Object.keys(this.activeSims).forEach(canvasId => {
+      this.stop(canvasId);
+    });
+  }
+
+  reset(canvasId) {
+    const sim = this.activeSims[canvasId];
+    if (sim) {
+      sim.reset();
+    }
+  }
+
+  setParam(canvasId, name, value) {
+    const sim = this.activeSims[canvasId];
+    if (sim) {
+      sim.setParam(name, value);
     }
   }
 }
@@ -736,6 +751,316 @@ class LaplaceSimulation {
         }
       }
     }
+  }
+}
+
+// ----------------------------------------------------
+// 4. TRANSVERSALITY & INITIAL CURVE SIMULATOR
+// Visualizes the transversality condition between the initial curve and the characteristics
+// ----------------------------------------------------
+class TransversalitySimulation {
+  constructor(canvas, ctx, controls) {
+    this.canvas = canvas;
+    this.ctx = ctx;
+    this.controls = controls;
+
+    this.charType = controls.charType || 'horizontal';
+    this.curveType = controls.curveType || 'line';
+    this.angle = parseFloat(controls.angle !== undefined ? controls.angle : 90);
+    this.offset = parseFloat(controls.offset !== undefined ? controls.offset : 0);
+
+    this.pulseTime = 0;
+  }
+
+  init() {
+    this.reset();
+  }
+
+  cleanup() {
+    // No special cleanup needed
+  }
+
+  reset() {
+    this.pulseTime = 0;
+  }
+
+  setParam(name, value) {
+    if (name === 'charType') this.charType = value;
+    if (name === 'curveType') this.curveType = value;
+    if (name === 'angle') this.angle = parseFloat(value);
+    if (name === 'offset') this.offset = parseFloat(value);
+  }
+
+  update() {
+    this.pulseTime += 0.05;
+  }
+
+  draw() {
+    const width = this.canvas.width / (window.devicePixelRatio || 1);
+    const height = this.canvas.height / (window.devicePixelRatio || 1);
+    this.ctx.clearRect(0, 0, width, height);
+
+    const scale = Math.min(width, height) / 22;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    const toScreen = (x, y) => ({
+      x: cx + x * scale,
+      y: cy - y * scale
+    });
+
+    // 1. Draw Grid Lines
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    this.ctx.lineWidth = 1;
+    for (let x = -10; x <= 10; x += 2) {
+      const pTop = toScreen(x, 10);
+      const pBot = toScreen(x, -10);
+      this.ctx.beginPath();
+      this.ctx.moveTo(pTop.x, pTop.y);
+      this.ctx.lineTo(pBot.x, pBot.y);
+      this.ctx.stroke();
+
+      const pLeft = toScreen(-10, x);
+      const pRight = toScreen(10, x);
+      this.ctx.beginPath();
+      this.ctx.moveTo(pLeft.x, pLeft.y);
+      this.ctx.lineTo(pRight.x, pRight.y);
+      this.ctx.stroke();
+    }
+
+    // 2. Draw Characteristic Curves
+    this.ctx.strokeStyle = 'rgba(74, 144, 226, 0.15)'; // subtle light blue
+    this.ctx.lineWidth = 1.5;
+    this.ctx.setLineDash([4, 4]);
+
+    if (this.charType === 'horizontal') {
+      for (let y = -9; y <= 9; y += 1.5) {
+        const p1 = toScreen(-11, y);
+        const p2 = toScreen(11, y);
+        this.ctx.beginPath();
+        this.ctx.moveTo(p1.x, p1.y);
+        this.ctx.lineTo(p2.x, p2.y);
+        this.ctx.stroke();
+      }
+    } else if (this.charType === 'diagonal') {
+      for (let cVal = -15; cVal <= 15; cVal += 2.5) {
+        const p1 = toScreen(-11, 11 + cVal);
+        const p2 = toScreen(11, -11 + cVal);
+        this.ctx.beginPath();
+        this.ctx.moveTo(p1.x, p1.y);
+        this.ctx.lineTo(p2.x, p2.y);
+        this.ctx.stroke();
+      }
+    } else if (this.charType === 'circular') {
+      for (let r = 1.5; r <= 11; r += 1.5) {
+        this.ctx.beginPath();
+        this.ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
+        this.ctx.stroke();
+      }
+    }
+    this.ctx.setLineDash([]); // Reset line dash
+
+    // 3. Generate initial curve points
+    const points = [];
+    const rad = (this.angle * Math.PI) / 180;
+    const numPoints = 120;
+    for (let i = 0; i <= numPoints; i++) {
+      const s = -8 + (16 * i) / numPoints;
+      let xLocal = s;
+      let yLocal = 0;
+      if (this.curveType === 'parabola') {
+        yLocal = 0.08 * s * s - 2.5;
+      } else if (this.curveType === 'sine') {
+        yLocal = 2 * Math.sin(s / 1.5);
+      }
+      
+      const xRot = xLocal * Math.cos(rad) - yLocal * Math.sin(rad);
+      const yRot = xLocal * Math.sin(rad) + yLocal * Math.cos(rad);
+      
+      const x = xRot - (this.offset / 15) * Math.sin(rad);
+      const y = yRot + (this.offset / 15) * Math.cos(rad);
+      points.push({ x, y, s });
+    }
+
+    // 4. Calculate point states (tangent vs characteristic direction comparison)
+    const states = [];
+    let hasFailure = false;
+    
+    for (let i = 0; i < points.length; i++) {
+      const pt = points[i];
+      const prev = points[Math.max(0, i - 1)];
+      const next = points[Math.min(points.length - 1, i + 1)];
+      let tx = next.x - prev.x;
+      let ty = next.y - prev.y;
+      const tLen = Math.sqrt(tx * tx + ty * ty);
+      if (tLen > 0) {
+        tx /= tLen;
+        ty /= tLen;
+      } else {
+        tx = 1;
+        ty = 0;
+      }
+
+      let cxDir = 1;
+      let cyDir = 0;
+      if (this.charType === 'diagonal') {
+        cxDir = 1 / Math.sqrt(2);
+        cyDir = -1 / Math.sqrt(2);
+      } else if (this.charType === 'circular') {
+        const d = Math.sqrt(pt.x * pt.x + pt.y * pt.y);
+        if (d > 0.01) {
+          cxDir = -pt.y / d;
+          cyDir = pt.x / d;
+        } else {
+          cxDir = 1;
+          cyDir = 0;
+        }
+      }
+
+      // Parallel check: determinant (tx * cyDir - ty * cxDir) close to 0
+      const det = tx * cyDir - ty * cxDir;
+      const isParallel = Math.abs(det) < 0.12; // tolerance for parallel (approx 7 degrees)
+      if (isParallel) {
+        hasFailure = true;
+      }
+
+      states.push({
+        x: pt.x,
+        y: pt.y,
+        tx,
+        ty,
+        cx: cxDir,
+        cy: cyDir,
+        isParallel
+      });
+    }
+
+    // 5. Draw the initial curve as colored segments
+    this.ctx.lineWidth = 4;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = toScreen(points[i].x, points[i].y);
+      const p2 = toScreen(points[i+1].x, points[i+1].y);
+      
+      const isSegParallel = states[i].isParallel || states[i+1].isParallel;
+      
+      this.ctx.strokeStyle = isSegParallel ? '#ff4d4d' : '#9b59b2'; // Red vs Purple
+      this.ctx.beginPath();
+      this.ctx.moveTo(p1.x, p1.y);
+      this.ctx.lineTo(p2.x, p2.y);
+      this.ctx.stroke();
+    }
+
+    // 6. Draw sample vectors
+    const sampleIndices = [20, 40, 60, 80, 100];
+    sampleIndices.forEach(idx => {
+      const state = states[idx];
+      const scr = toScreen(state.x, state.y);
+
+      // Tangent vector arrow (Purple)
+      const arrowLength = 1.3 * scale;
+      const drawArrow = (fromX, fromY, dx, dy, color) => {
+        const toX = fromX + dx * arrowLength;
+        const toY = fromY - dy * arrowLength;
+
+        this.ctx.strokeStyle = color;
+        this.ctx.fillStyle = color;
+        this.ctx.lineWidth = 2.5;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(fromX, fromY);
+        this.ctx.lineTo(toX, toY);
+        this.ctx.stroke();
+
+        const angle = Math.atan2(-dy, dx);
+        this.ctx.beginPath();
+        this.ctx.moveTo(toX, toY);
+        this.ctx.lineTo(toX - 8 * Math.cos(angle - Math.PI/6), toY - 8 * Math.sin(angle - Math.PI/6));
+        this.ctx.lineTo(toX - 8 * Math.cos(angle + Math.PI/6), toY - 8 * Math.sin(angle + Math.PI/6));
+        this.ctx.closePath();
+        this.ctx.fill();
+      };
+
+      drawArrow(scr.x, scr.y, state.cx, state.cy, '#e67e22'); // Orange (char)
+      drawArrow(scr.x, scr.y, state.tx, state.ty, '#9b59b2'); // Purple (tangent)
+
+      if (state.isParallel) {
+        const pulseRadius = 5 + Math.sin(this.pulseTime) * 3;
+        this.ctx.fillStyle = 'rgba(255, 77, 77, 0.4)';
+        this.ctx.beginPath();
+        this.ctx.arc(scr.x, scr.y, pulseRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.strokeStyle = '#ff4d4d';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.arc(scr.x, scr.y, pulseRadius + 3, 0, Math.PI * 2);
+        this.ctx.stroke();
+      } else {
+        this.ctx.fillStyle = '#fff';
+        this.ctx.beginPath();
+        this.ctx.arc(scr.x, scr.y, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    });
+
+    // 7. Status Panel Overlay
+    this.ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    this.ctx.strokeStyle = hasFailure ? 'rgba(255, 77, 77, 0.4)' : 'rgba(46, 204, 113, 0.4)';
+    this.ctx.lineWidth = 2;
+    const boxW = width - 40;
+    const boxH = 55;
+    const boxX = 20;
+    const boxY = height - boxH - 20;
+    
+    // Manual cross-browser rounded rect (r=8)
+    const r = 8;
+    this.ctx.beginPath();
+    this.ctx.moveTo(boxX + r, boxY);
+    this.ctx.lineTo(boxX + boxW - r, boxY);
+    this.ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + r);
+    this.ctx.lineTo(boxX + boxW, boxY + boxH - r);
+    this.ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - r, boxY + boxH);
+    this.ctx.lineTo(boxX + r, boxY + boxH);
+    this.ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - r);
+    this.ctx.lineTo(boxX, boxY + r);
+    this.ctx.quadraticCurveTo(boxX, boxY, boxX + r, boxY);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = hasFailure ? '#ff8080' : '#2ecc71';
+    this.ctx.font = 'bold 14px Inter, system-ui, -apple-system, sans-serif';
+    this.ctx.textAlign = 'right';
+    
+    const textStatus = hasFailure 
+      ? '✗ תנאי הטרנסוורסליות נכשל! עקום ההתחלה משיק או מקביל לאופיינים.' 
+      : '✓ תנאי הטרנסוורסליות מתקיים! ניתן לקבל פתרון יחיד למשוואה.';
+    this.ctx.fillText(textStatus, width - 35, boxY + 22);
+
+    this.ctx.fillStyle = '#cbd5e1';
+    this.ctx.font = '11px Inter, system-ui, -apple-system, sans-serif';
+    const textDesc = hasFailure
+      ? 'הווקטורים (סגול וכתום) מקבילים בנקודות האדומות, ולכן המידע אינו יכול להתפשט.'
+      : 'בכל נקודה, וקטור המשיק (סגול) ווקטור האופיין (כתום) מצביעים לכיוונים שונים.';
+    this.ctx.fillText(textDesc, width - 35, boxY + 42);
+    
+    // 8. Legend labels (top left)
+    this.ctx.textAlign = 'right';
+    
+    this.ctx.fillStyle = '#9b59b2';
+    this.ctx.beginPath();
+    this.ctx.arc(width - 30, 25, 4, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.fillStyle = '#e2e8f0';
+    this.ctx.font = '11px Inter, sans-serif';
+    this.ctx.fillText('וקטור המשיק לעקום ההתחלה', width - 42, 28);
+
+    this.ctx.fillStyle = '#e67e22';
+    this.ctx.beginPath();
+    this.ctx.arc(width - 30, 42, 4, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.fillStyle = '#e2e8f0';
+    this.ctx.fillText('וקטור הכיוון האופייני', width - 42, 45);
   }
 }
 
