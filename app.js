@@ -862,6 +862,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       quizCard.innerHTML = `
         <div class="quiz-question-header">${qData.q}</div>
+        ${qData.graph ? `<div class="quiz-graph-container" style="display:flex; justify-content:center; align-items:center; margin:1.25rem 0; background:var(--bg-study-nav); border:1px solid var(--border-color); border-radius:var(--border-radius-sm); padding:1rem; min-height:120px; overflow:hidden;">${qData.graph}</div>` : ''}
         <div class="quiz-options"></div>
         <div class="quiz-explanation" style="${state.submitted ? 'display: block;' : ''}">
           <strong style="display:block; margin-bottom:6px;"><i class="fas fa-info-circle"></i> הסבר פתרון:</strong>
