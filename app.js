@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Dynamic registry definition for modular content files
   window.pdeSubchapterRegistry = window.pdeSubchapterRegistry || {};
-  const populatedSubchapters = ["1.1", "1.2", "1.3", "1.4"];
+  const populatedSubchapters = ["1.1", "1.2", "1.3", "1.4", "1.5"];
 
   function prefetchContent() {
     populatedSubchapters.forEach(subId => {
