@@ -82,12 +82,40 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. INITIALIZATION & SETUP
   // ----------------------------------------------------
   
+  // Dynamic registry definition for modular content files
+  window.pdeSubchapterRegistry = window.pdeSubchapterRegistry || {};
+  const populatedSubchapters = ["1.1", "1.2", "1.3", "1.4"];
+
+  function prefetchContent() {
+    populatedSubchapters.forEach(subId => {
+      const scriptId = `script-sub-${subId.replace('.', '_')}`;
+      if (!document.getElementById(scriptId)) {
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = `content/${subId}.js?v=1.0.4`;
+        script.onload = () => {
+          // Sync content and quizzes to the local metadata outline for search and fast routing
+          pdeCourseData.forEach(ch => {
+            ch.subchapters.forEach(sub => {
+              if (sub.id === subId && window.pdeSubchapterRegistry[subId]) {
+                sub.content = window.pdeSubchapterRegistry[subId].content;
+                sub.quizzes = window.pdeSubchapterRegistry[subId].quizzes;
+              }
+            });
+          });
+        };
+        document.head.appendChild(script);
+      }
+    });
+  }
+
   function init() {
     renderSidebar();
     renderWelcomeGrid();
     updateProgressTracker();
     restoreTheme();
     setupEventListeners();
+    prefetchContent(); // Prefetch populated content files in the background
     
     // Auto-render math on initial page text
     renderMathInElement(document.body, {
@@ -339,18 +367,61 @@ document.addEventListener('DOMContentLoaded', () => {
     simulatorManager.stopAll();
     studyContentFlow.innerHTML = '';
 
-    const content = currentActiveSubchapter.content;
-    
-    // If no content, render a Coming Soon card
-    if (!content || content.trim() === '') {
-      const placeholder = document.createElement('div');
-      placeholder.className = 'coming-soon-card';
-      placeholder.innerHTML = `
-        <i class="fas fa-graduation-cap"></i>
-        <h3>תוכן תת-הפרק ייטען בקרוב</h3>
-        <p>התוכן הלימודי, דוגמאות פתורות ותרגילים אינטראקטיביים עבור נושא זה (${currentActiveSubchapter.id}) ייכתבו בהנחייתך שלב אחר שלב.</p>
+    const subId = currentActiveSubchapter.id;
+
+    // 1. If content is already loaded in the global registry, render it immediately
+    if (window.pdeSubchapterRegistry[subId]) {
+      // Sync cache
+      currentActiveSubchapter.content = window.pdeSubchapterRegistry[subId].content;
+      currentActiveSubchapter.quizzes = window.pdeSubchapterRegistry[subId].quizzes;
+      renderSubchapterContent(currentActiveSubchapter);
+    } 
+    // 2. If it is one of the populated subchapters, load it dynamically (if not finished prefetching)
+    else if (populatedSubchapters.includes(subId)) {
+      studyContentFlow.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:200px; color:var(--text-muted);">
+          <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:var(--color-secondary); margin-bottom:15px;"></i>
+          <p>טוען את תוכן השיעור...</p>
+        </div>
       `;
-      studyContentFlow.appendChild(placeholder);
+
+      const scriptId = `script-sub-${subId.replace('.', '_')}`;
+      let script = document.getElementById(scriptId);
+      if (!script) {
+        script = document.createElement('script');
+        script.id = scriptId;
+        script.src = `content/${subId}.js?v=1.0.4`;
+        document.head.appendChild(script);
+      }
+
+      const onLoadHandler = () => {
+        if (window.pdeSubchapterRegistry[subId]) {
+          currentActiveSubchapter.content = window.pdeSubchapterRegistry[subId].content;
+          currentActiveSubchapter.quizzes = window.pdeSubchapterRegistry[subId].quizzes;
+          renderSubchapterContent(currentActiveSubchapter);
+        } else {
+          renderComingSoonCard(subId);
+        }
+      };
+
+      const onErrorHandler = () => {
+        renderComingSoonCard(subId);
+      };
+
+      // Set or update event listeners
+      script.onload = onLoadHandler;
+      script.onerror = onErrorHandler;
+    } 
+    // 3. Otherwise, render the "Coming Soon" card
+    else {
+      renderComingSoonCard(subId);
+    }
+  }
+
+  function renderSubchapterContent(subchapter) {
+    const content = subchapter.content;
+    if (!content || content.trim() === '') {
+      renderComingSoonCard(subchapter.id);
       return;
     }
 
@@ -369,6 +440,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ],
       throwOnError: false
     });
+  }
+
+  function renderComingSoonCard(subId) {
+    studyContentFlow.innerHTML = '';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'coming-soon-card';
+    placeholder.innerHTML = `
+      <i class="fas fa-graduation-cap"></i>
+      <h3>תוכן תת-הפרק ייטען בקרוב</h3>
+      <p>התוכן הלימודי, דוגמאות פתורות ותרגילים אינטראקטיביים עבור נושא זה (${subId}) ייכתבו בהנחייתך שלב אחר שלב.</p>
+    `;
+    studyContentFlow.appendChild(placeholder);
   }
 
   // ----------------------------------------------------
